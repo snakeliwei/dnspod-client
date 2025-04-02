@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 import { DnsPodApi } from '@/api/dnspod'
 
 interface DnsRecord {
@@ -55,16 +54,6 @@ export const useDomainStore = defineStore('domain', {
         console.error('获取域名列表失败:', error)
         throw error
       }
-    },
-    
-    async createDomain(domain: string) {
-      // 这里应该调用API创建域名
-      return {}
-    },
-    
-    async deleteDomain(id: string) {
-      // 这里应该调用API删除域名
-      return {}
     }
   }
 })

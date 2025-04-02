@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -14,15 +13,15 @@ export const useAuthStore = defineStore('auth', {
   },
   
   actions: {
-    setToken(newToken) {
+    setToken(newToken: string) {
       this.token = newToken
     },
     
-    setSecret(newSecret) {
+    setSecret(newSecret: string) {
       this.secret = newSecret
     },
     
-    login(newToken, newSecret) {
+    login(newToken: string, newSecret: string) {
       this.setToken(newToken)
       this.setSecret(newSecret)
     }

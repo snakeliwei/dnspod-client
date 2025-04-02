@@ -20,48 +20,9 @@
       <template #operations="{ record }">
         <a-space>
           <a-button type="text" @click="showRecordManagement(record)">管理解析</a-button>
-          <a-button type="text" status="danger" @click="handleDelete(record)">删除</a-button>
         </a-space>
       </template>
     </a-table>
-    
-    <a-space>
-      <a-button type="primary" @click="showAddModal" style="margin-top: 16px; border-radius: 6px" :transition-props="{ duration: 300 }"
->
-        添加域名
-      </a-button>
-      <a-button 
-        type="outline" 
-        @click="showBatchModal" 
-        style="margin-top: 16px; border-radius: 6px"
-        :disabled="selectedDomains.size === 0"
-        :transition-props="{ duration: 300 }"
-      >
-        批量操作
-      </a-button>
-    </a-space>
-    
-    <a-modal 
-      v-model:visible="addModalVisible" 
-      title="添加域名"
-      @ok="handleAdd"
-      @cancel="addModalVisible = false"
-    >
-      <a-form :model="addForm">
-        <a-form-item field="domain" label="域名">
-          <a-input v-model="addForm.domain" placeholder="请输入域名" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-    <!-- 批量操作模态框 -->
-    <a-modal 
-      v-model:visible="batchModalVisible" 
-      title="批量操作"
-      @ok="handleBatchDelete"
-      @cancel="batchModalVisible = false"
-    >
-      <a-alert>确定要删除选中的域名吗？此操作不可撤销。</a-alert>
-    </a-modal>
   </a-card>
 </template>
 
@@ -86,12 +47,7 @@ const loading = ref(false)
 const domains = ref<Domain[]>([]) // 明确声明类型为 Domain[]
 const allDomains = ref<Domain[]>([])
 const searchText = ref('')
-const addModalVisible = ref(false)
-const batchModalVisible = ref(false)
 const selectedDomains = ref(new Set())
-const addForm = ref({
-  domain: ''
-})
 
 const columns = [
   {
@@ -159,30 +115,7 @@ const handleSearch = () => {
   )
 }
 
-const showAddModal = () => {
-  addModalVisible.value = true
-}
 
-const handleAdd = async () => {
-  try {
-    await domainStore.createDomain(addForm.value.domain)
-    Message.success('添加成功')
-    addModalVisible.value = false
-    fetchDomains()
-  } catch (error) {
-    Message.error('添加域名失败')
-  }
-}
-
-const handleDelete = async (record: { id: string | number }) => {
-  try {
-    await domainStore.deleteDomain(String(record.id))
-    Message.success('删除成功')
-    fetchDomains()
-  } catch (error) {
-    Message.error('删除域名失败')
-  }
-}
 
 const showRecordManagement = (domain: { name: string }) => {
   router.push({
@@ -191,24 +124,6 @@ const showRecordManagement = (domain: { name: string }) => {
   })
 }
 
-const showBatchModal = () => {
-  batchModalVisible.value = true
-}
-
-const handleBatchDelete = async () => {
-  try {
-    const promises = Array.from(selectedDomains.value).map(id => 
-      domainStore.deleteDomain(String(id))
-    )
-    await Promise.all(promises)
-    Message.success(`成功删除${promises.length}个域名`)
-    selectedDomains.value.clear()
-    batchModalVisible.value = false
-    fetchDomains()
-  } catch (error) {
-    Message.error(`批量删除失败: ${(error as any).response?.data?.message || (error as Error).message}`)
-  }
-}
 
 // 初始化加载域名列表
 fetchDomains()
