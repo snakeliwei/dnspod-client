@@ -23,7 +23,7 @@ async function handleLogin() {
     Message.success('认证成功');
     router.push('/domain-management');
   } catch (error) {
-    Message.error('认证失败: ' + error.message);
+    Message.error('认证失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
   } finally {
     loading.value = false;
   }

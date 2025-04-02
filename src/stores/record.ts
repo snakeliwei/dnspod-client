@@ -1,9 +1,20 @@
 import { defineStore } from 'pinia'
 import { DnsPodApi } from '@/api/dnspod'
 
+interface DnsRecord {
+  id: string;
+  name: string;
+  type: string;
+  line: string;
+  value: string;
+  ttl?: number;
+  status?: string;
+  // Add other properties as needed
+}
+
 export const useRecordStore = defineStore('record', {
   state: () => ({
-    records: []
+    records: [] as DnsRecord[]
   }),
   
   actions: {

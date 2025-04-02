@@ -2,10 +2,29 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { DnsPodApi } from '@/api/dnspod'
 
+interface DnsRecord {
+  id: string;
+  name: string;
+  type: string;
+  line: string;
+  value: string;
+  ttl?: number;
+  status?: string;
+  // Add other properties as needed
+}
+
+interface DoMain {
+  id: string;
+  name: string;
+  grade: string;
+  status: string;
+  // Add other properties as needed
+}
+
 export const useDomainStore = defineStore('domain', {
   state: () => ({
-    domains: [],
-    records: []
+    domains: [] as DoMain[],
+    records: [] as DnsRecord[]
   }),
   
   actions: {

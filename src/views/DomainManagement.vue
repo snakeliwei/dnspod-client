@@ -8,13 +8,13 @@
     />
     <a-table 
       :columns="columns" 
-      :data="filteredDomains"
+      :data="domains"
       :loading="loading"
       row-key="id"
       :style="{ borderRadius: '8px' }"
       :row-selection="{ 
-        selectedRowKeys: Array.from(selectedDomains), 
-        onChange: (keys) => { selectedDomains = new Set(keys) } 
+        selectedRowKeys: Array.from(selectedDomains),
+        onChange: (keys: (string | number)[]) => { selectedDomains = new Set(keys) }
       }"
     >
       <template #operations="{ record }">
@@ -66,17 +66,25 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDomainStore } from '@/stores/domain'
 import { Message } from '@arco-design/web-vue'
+
+// 定义域名对象的类型
+interface Domain {
+  id: string | number;
+  name: string;
+  grade: string;
+  status: string;
+}
 
 const router = useRouter()
 
 const domainStore = useDomainStore()
 const loading = ref(false)
-const domains = ref([])
-const allDomains = ref([])
+const domains = ref<Domain[]>([]) // 明确声明类型为 Domain[]
+const allDomains = ref<Domain[]>([])
 const searchText = ref('')
 const addModalVisible = ref(false)
 const batchModalVisible = ref(false)
@@ -91,8 +99,13 @@ const columns = [
     dataIndex: 'name'
   },
   {
+    title: '类型',
+    dataIndex: 'grade'
+  },
+  {
     title: '状态',
-    dataIndex: 'status'
+    dataIndex: 'status',
+    render: (status: string) => status === 'enable' ? '启用' : '禁用'
   },
   {
     title: '操作',
@@ -105,25 +118,34 @@ const fetchDomains = async () => {
     loading.value = true
     console.log('开始获取域名列表...')
     const data = await domainStore.listDomains()
-    domains.value = data
-    allDomains.value = data
+    console.log('API返回的数据:', data)
+    console.log('记录数据类型:', typeof data, Array.isArray(data))
+    console.log('记录数据结构:', JSON.stringify(data))
+    if (data && (Array.isArray(data) || typeof data === 'object')) {
+      // 处理可能返回的对象或数组
+      const domainData = Array.isArray(data) ? data : [data]
+        // 格式化记录数据以匹配表格列定义
+        domains.value = domainData.map((domain: any) => ({
+        id: domain.id || '',
+        name: domain.name || '',
+        grade: domain.grade || '',
+        status: domain.status || 'enable'
+      }))
+    allDomains.value = domains.value
     console.log('域名列表获取成功:', data)
+  } else {
+      console.error('记录数据格式不正确，无法显示')
+      domains.value = []
+      allDomains.value = []
+    }
   } catch (error) {
     console.error('获取域名列表失败:', error)
-    Message.error(`获取域名列表失败: ${error.message || '未知错误'}`)
+    Message.error(`获取域名列表失败: ${(error as Error).message || '未知错误'}`)
   } finally {
     loading.value = false
   }
 }
 
-const filteredDomains = computed(() => {
-  if (!searchText.value) return domains.value
-  
-  const search = searchText.value.toLowerCase()
-  return domains.value.filter(domain => 
-    domain.name.toLowerCase().includes(search)
-  )
-})
 
 const handleSearch = () => {
   if (!searchText.value) {
@@ -133,7 +155,7 @@ const handleSearch = () => {
   
   const search = searchText.value.toLowerCase()
   domains.value = allDomains.value.filter(domain => 
-    domain.name.toLowerCase().includes(search)
+(domain as { name: string }).name.toLowerCase().includes(search)
   )
 }
 
@@ -152,9 +174,9 @@ const handleAdd = async () => {
   }
 }
 
-const handleDelete = async (record) => {
+const handleDelete = async (record: { id: string | number }) => {
   try {
-    await domainStore.deleteDomain(record.id)
+    await domainStore.deleteDomain(String(record.id))
     Message.success('删除成功')
     fetchDomains()
   } catch (error) {
@@ -162,7 +184,7 @@ const handleDelete = async (record) => {
   }
 }
 
-const showRecordManagement = (domain) => {
+const showRecordManagement = (domain: { name: string }) => {
   router.push({
     name: 'RecordManagement',
     query: { domain: domain.name }
@@ -176,7 +198,7 @@ const showBatchModal = () => {
 const handleBatchDelete = async () => {
   try {
     const promises = Array.from(selectedDomains.value).map(id => 
-      domainStore.deleteDomain(id)
+      domainStore.deleteDomain(String(id))
     )
     await Promise.all(promises)
     Message.success(`成功删除${promises.length}个域名`)
@@ -184,7 +206,7 @@ const handleBatchDelete = async () => {
     batchModalVisible.value = false
     fetchDomains()
   } catch (error) {
-    Message.error(`批量删除失败: ${error.response?.data?.message || error.message}`)
+    Message.error(`批量删除失败: ${(error as any).response?.data?.message || (error as Error).message}`)
   }
 }
 

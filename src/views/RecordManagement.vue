@@ -14,7 +14,7 @@
       :style="{ borderRadius: '8px' }"
       :row-selection="{ 
         selectedRowKeys: Array.from(selectedRecords), 
-        onChange: (keys) => { selectedRecords = new Set(keys) } 
+        onChange: (keys: (string | number)[]) => { selectedRecords = new Set(keys) }
       }"
     >
       <template #operations="{ record }">
@@ -182,12 +182,24 @@ import { useRoute } from 'vue-router'
 import { useRecordStore } from '@/stores/record'
 import { Message } from '@arco-design/web-vue'
 
+
+interface DnsRecord {
+  id: string;
+  name: string;
+  type: string;
+  line: string;
+  value: string;
+  ttl?: number;
+  status?: string;
+  // Add other properties as needed
+}
+
 const route = useRoute()
 const recordStore = useRecordStore()
 const domain = ref(route.query.domain as string)
 const loading = ref(false)
-const records = ref([])
-const allRecords = ref([])
+const records = ref<DnsRecord[]>([]) // 明确声明类型为 DnsRecord[]
+const allRecords = ref<DnsRecord[]>([])
 const searchText = ref('')
 const addModalVisible = ref(false)
 const editModalVisible = ref(false)
@@ -281,7 +293,7 @@ const fetchRecords = async () => {
       const recordsData = Array.isArray(data) ? data : [data]
       
       // 格式化记录数据以匹配表格列定义
-      records.value = recordsData.map(record => ({
+      records.value = recordsData.map((record: any) => ({
         id: record.id || '',
         name: record.name || '',
         type: record.type || '',
@@ -317,7 +329,7 @@ const handleSearch = () => {
   
   const search = searchText.value.toLowerCase()
   records.value = allRecords.value.filter(record => 
-    record.name.toLowerCase().includes(search) || 
+    ((record.name as string)?.toString().toLowerCase() || '').includes(search) ||
     record.value.toLowerCase().includes(search) ||
     record.type.toLowerCase().includes(search) ||
     record.line.toLowerCase().includes(search) ||
@@ -332,8 +344,18 @@ const showAddModal = () => {
   addModalVisible.value = true
 }
 
-const showEditModal = (record) => {
-  editForm.value = { ...record }
+const showEditModal = (record: DnsRecord) => {
+  editForm.value = {
+    id: record.id,
+    type: record.type,
+    name: record.name,
+    value: record.value,
+    line_id: '0', // 默认使用默认线路ID
+    ttl: record.ttl?.toString() || '600',
+    mx: '5', // 默认MX优先级
+    status: record.status || 'enable',
+    line: record.line || '默认'
+  }
   editModalVisible.value = true
 }
 
@@ -355,7 +377,7 @@ const handleAdd = async () => {
     addModalVisible.value = false
     fetchRecords()
   } catch (error) {
-    Message.error('添加记录失败: ' + (error.message || '未知错误'))
+    Message.error('添加记录失败: ' + ((error as Error).message || '未知错误'))
   }
 }
 
@@ -378,32 +400,32 @@ const handleEdit = async () => {
     editModalVisible.value = false
     fetchRecords()
   } catch (error) {
-    Message.error('更新记录失败: ' + (error.message || '未知错误'))
+    Message.error('更新记录失败: ' + ((error as Error).message || '未知错误'))
   }
 }
 
-const handleDelete = async (record) => {
+const handleDelete = async (record: DnsRecord) => {
   try {
     await recordStore.deleteRecord(domain.value, record.id)
     Message.success('删除成功')
     selectedRecords.value.delete(record.id)
     fetchRecords()
   } catch (error) {
-    Message.error(`删除记录失败: ${error.response?.data?.message || error.message}`)
+    Message.error(`删除记录失败: ${(error as any).response?.data?.message || (error as Error).message}`)
   }
 }
 
 const handleBatchDelete = async () => {
   try {
     const promises = Array.from(selectedRecords.value).map(id => 
-      recordStore.deleteRecord(domain.value, id)
+      recordStore.deleteRecord(domain.value, id as string)
     )
     await Promise.all(promises)
     Message.success(`成功删除${promises.length}条记录`)
     selectedRecords.value.clear()
     fetchRecords()
   } catch (error) {
-    Message.error(`批量删除失败: ${error.response?.data?.message || error.message}`)
+    Message.error(`批量删除失败: ${(error as any).response?.data?.message || (error as Error).message}`)
   }
 }
 
@@ -414,8 +436,8 @@ const handleBatchUpdate = async () => {
       
       // 移除空值字段
       Object.keys(updateData).forEach(key => {
-        if (updateData[key] === '' || updateData[key] === undefined || updateData[key] === null) {
-          delete updateData[key]
+        if ((updateData as any)[key] === '' || (updateData as any)[key] === undefined || (updateData as any)[key] === null) {
+          delete (updateData as any)[key]
         }
       })
       
@@ -424,9 +446,14 @@ const handleBatchUpdate = async () => {
       if (updateData.mx) updateData.mx = updateData.mx.toString()
       
       // 如果不是MX记录类型，删除mx字段
-      if (updateData.type !== 'MX') delete updateData.mx
+      if (updateData.type !== 'MX' && 'mx' in updateData) {
+        if ('mx' in updateData) {
+          delete (updateData as any).mx
+        }
+      }
       
-      return recordStore.updateRecord(domain.value, id, updateData)
+      // 将id转换为字符串类型，确保类型安全
+      return recordStore.updateRecord(domain.value, String(id), updateData)
     })
     
     await Promise.all(updates)
@@ -435,17 +462,10 @@ const handleBatchUpdate = async () => {
     selectedRecords.value.clear()
     fetchRecords()
   } catch (error) {
-    Message.error(`批量更新失败: ${error.response?.data?.message || error.message}`)
+    Message.error(`批量更新失败: ${(error as any).response?.data?.message || (error as Error).message}`)
   }
 }
 
-const toggleRecordSelection = (record) => {
-  if (selectedRecords.value.has(record.id)) {
-    selectedRecords.value.delete(record.id)
-  } else {
-    selectedRecords.value.add(record.id)
-  }
-}
 
 const showBatchModal = () => {
   batchModalVisible.value = true
